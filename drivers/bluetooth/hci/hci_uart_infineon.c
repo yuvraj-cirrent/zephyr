@@ -34,12 +34,16 @@ LOG_MODULE_REGISTER(infineon_bt_hci_uart);
 BUILD_ASSERT(DT_PROP(DT_INST_BUS(0), hw_flow_control) == 1,
 		"hw_flow_control must be enabled in the devicetree");
 
-/* BT settling time after power on */
-#define BT_POWER_ON_SETTLING_TIME_MS      (500u)
+/* BT settling time after power on (1000ms to allow CYW43439 ROM to fully
+ * initialize and drive UART RTS LOW before the first HCI Reset)
+ */
+#define BT_POWER_ON_SETTLING_TIME_MS      (1000u)
 #define BT_POWER_CBUCK_DISCHARGE_TIME_MS  (300u)
 
-/* Stabilization delay after FW loading */
-#define BT_STABILIZATION_DELAY_MS         (250u)
+/* Stabilization delay after FW loading (chip reboots after LAUNCH_RAM;
+ * 1000ms is needed for the CYW43439 to fully restart at 115200 baud)
+ */
+#define BT_STABILIZATION_DELAY_MS         (1000u)
 
 /* HCI Command packet from Host to Controller */
 #define HCI_COMMAND_PACKET                (0x01)
@@ -266,8 +270,27 @@ int bt_h4_vnd_setup(const struct device *dev, const struct bt_hci_setup_params *
 
 	/* Check BT Uart instance */
 	if (!device_is_ready(dev)) {
+		LOG_ERR("BT UART device not ready");
 		return -EINVAL;
 	}
+
+#if DT_INST_NODE_HAS_PROP(0, bt_dev_wake_gpios)
+	struct gpio_dt_spec bt_dev_wake = GPIO_DT_SPEC_GET(DT_DRV_INST(0), bt_dev_wake_gpios);
+
+	/* Assert BT_DEV_WAKE before powering on to keep BT subsystem awake */
+	if (!gpio_is_ready_dt(&bt_dev_wake)) {
+		LOG_ERR("Error: bt_dev_wake gpio not ready");
+		return -EIO;
+	}
+
+	err = gpio_pin_configure_dt(&bt_dev_wake, GPIO_OUTPUT_ACTIVE);
+	if (err) {
+		LOG_ERR("Error %d: failed to configure bt_dev_wake %s pin %d",
+			err, bt_dev_wake.port->name, bt_dev_wake.pin);
+		return err;
+	}
+
+#endif /* DT_INST_NODE_HAS_PROP(0, bt_dev_wake_gpios) */
 
 #if DT_INST_NODE_HAS_PROP(0, bt_reg_on_gpios)
 	struct gpio_dt_spec bt_reg_on = GPIO_DT_SPEC_GET(DT_DRV_INST(0), bt_reg_on_gpios);
@@ -294,10 +317,21 @@ int bt_h4_vnd_setup(const struct device *dev, const struct bt_hci_setup_params *
 	if (err) {
 		return err;
 	}
+
 #endif /* DT_INST_NODE_HAS_PROP(0, bt_reg_on_gpios) */
 
 	/* BT settling time after power on */
 	(void)k_msleep(BT_POWER_ON_SETTLING_TIME_MS);
+
+	/* Flush any startup bytes sent by BT controller during power-on */
+	{
+		uint8_t discard[32];
+		int n;
+
+		do {
+			n = uart_fifo_read(dev, discard, sizeof(discard));
+		} while (n > 0);
+	}
 
 	/* Newer controllers like CYW555xx require Download mode for firmware upload.
 	 * In Download mode, the baudrate cannot be changed without the Minidriver.
@@ -314,6 +348,7 @@ int bt_h4_vnd_setup(const struct device *dev, const struct bt_hci_setup_params *
 	/* Send HCI_RESET */
 	err = bt_hci_cmd_send_sync(BT_HCI_OP_RESET, NULL, NULL);
 	if (err) {
+		LOG_ERR("HCI Reset failed: %d", err);
 		return err;
 	}
 
@@ -343,9 +378,23 @@ int bt_h4_vnd_setup(const struct device *dev, const struct bt_hci_setup_params *
 		}
 	}
 
+	/* Flush any boot notification bytes sent by the chip after LAUNCH_RAM.
+	 * The CYW43439 may emit non-HCI bytes at startup that would otherwise
+	 * corrupt the H4 RX parser state before the post-FW HCI Reset response.
+	 */
+	{
+		uint8_t discard[32];
+		int n;
+
+		do {
+			n = uart_fifo_read(dev, discard, sizeof(discard));
+		} while (n > 0);
+	}
+
 	/* Send HCI_RESET */
 	err = bt_hci_cmd_send_sync(BT_HCI_OP_RESET, NULL, NULL);
 	if (err) {
+		LOG_ERR("Post-FW HCI Reset failed: %d", err);
 		return err;
 	}
 

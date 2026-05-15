@@ -10,4 +10,7 @@ supported:
   - gpio
   - uart
   - watchdog
+  - bluetooth
+  - airoc
+  - cyw43439
 vendor: infineon

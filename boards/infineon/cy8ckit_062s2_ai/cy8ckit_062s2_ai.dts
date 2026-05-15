@@ -18,6 +18,7 @@
 		zephyr,shell-uart = &uart5;
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
+		zephyr,bt-hci = &bt_hci_uart;
 	};
 
 	aliases {
@@ -40,6 +41,16 @@
 			label = "LED_1";
 			gpios = <&gpio_prt5 4 GPIO_ACTIVE_HIGH>;
 		};
+	};
+
+	/* WL_REG_ON (P2.6) must be driven HIGH to power up the CYW43439 chip
+	 * main domain before the BT subsystem can be used.
+	 */
+	wl_reg_on: wl-reg-on {
+		compatible = "regulator-fixed";
+		regulator-name = "wl-reg-on";
+		enable-gpios = <&gpio_prt2 6 GPIO_ACTIVE_HIGH>;
+		regulator-boot-on;
 	};
 
 	gpio_keys {
@@ -84,12 +95,64 @@
 	clock-div = <1>;
 };
 
+&gpio_prt2 {
+	status = "okay";
+};
+
+&gpio_prt3 {
+	status = "okay";
+};
+
+&gpio_prt4 {
+	status = "okay";
+};
+
 &gpio_prt5 {
 	status = "okay";
 };
 
 &gpio_prt10 {
 	status = "okay";
+};
+
+/* BT HCI UART connected to CYW43439 (Murata 1YN module) */
+uart2: &scb2 {
+	compatible = "infineon,uart";
+	status = "okay";
+
+	/* The UART bus speed (current_speed) for bt_hci_uart should be the
+	 * same as the default baudrate defined in CYW43xx firmware (115200).
+	 */
+	current-speed = <115200>;
+
+	/* HCI-UART pins */
+	pinctrl-0 = <&p3_1_scb2_uart_tx &p3_0_scb2_uart_rx
+		     &p3_2_scb2_uart_rts &p3_3_scb2_uart_cts>;
+	pinctrl-names = "default";
+
+	/* HW flow control must be enabled for HCI H4 */
+	hw-flow-control;
+
+	bt_hci_uart: bt_hci_uart {
+		compatible = "zephyr,bt-hci-uart";
+
+		murata-1yn {
+			status = "okay";
+			compatible = "infineon,bt-hci-uart";
+			bt-reg-on-gpios = <&gpio_prt3 4 GPIO_ACTIVE_HIGH>;
+			/* BT_DEV_WAKE (active LOW): assert before first HCI Reset
+			 * to keep CYW43439 BT subsystem awake during init.
+			 */
+			bt-dev-wake-gpios = <&gpio_prt3 5 GPIO_ACTIVE_LOW>;
+
+			/* Configuration UART speeds for firmware download
+			 * (fw-download-speed) and HCI operation
+			 * (hci-operation-speed). If not defined, bus
+			 * current-speed is used as default.
+			 */
+			fw-download-speed = <3000000>;
+		};
+	};
 };
 
 /* UART connected to KitProg3 */
@@ -160,4 +223,23 @@ i2c0: &scb0 {
 
 &watchdog0 {
 	status = "okay";
+};
+
+/* BT HCI UART pin drive configuration */
+&p3_1_scb2_uart_tx {
+	drive-push-pull;
+};
+
+&p3_0_scb2_uart_rx {
+	input-enable;
+};
+
+&p3_2_scb2_uart_rts {
+	drive-push-pull;
+};
+
+&p3_3_scb2_uart_cts {
+	input-enable;
+	/* Pull CTS low so PSoC6 TX is not blocked before CYW43439 drives RTS */
+	bias-pull-down;
 };

@@ -1,0 +1,49 @@
+# CY8CKIT-062S2-AI PSOC 6 AI Evaluation Kit configuration
+#
+# Copyright (c) 2024 Arrow Electronics.
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_CY8CKIT_062S2_AI
+
+if WIFI || BT
+
+# Select AIROC part and module
+choice AIROC_PART
+	default CYW43439
+endchoice
+
+choice CYW43439_MODULE
+	default CYW43439_MURATA_1YN
+endchoice
+
+endif # WIFI || BT
+
+if WIFI
+
+# Enable L2 Ethernet
+config NET_L2_ETHERNET
+	default y
+
+endif # WIFI
+
+if BT
+
+# UART is required for BT HCI H4 transport
+config UART
+	bool
+	default y
+
+# Required to drive WL_REG_ON (P2.6) HIGH via regulator-fixed at boot
+config REGULATOR
+	bool
+	default y
+
+endif # BT
+
+# Heap pool size for BT/WIFI stacks
+config HEAP_MEM_POOL_ADD_SIZE_BOARD
+	int
+	default 15000 if WIFI
+	default 4096
+
+endif # BOARD_CY8CKIT_062S2_AI
