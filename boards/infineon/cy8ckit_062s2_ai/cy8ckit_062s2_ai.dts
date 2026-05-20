@@ -26,6 +26,7 @@
 		watchdog0 = &watchdog0;
 		pressure-sensor = &dps368;
 		accel0 = &bmi270;
+		radar0 = &bgt60tr13c;
 	};
 
 	leds {
@@ -92,6 +93,14 @@
 	status = "okay";
 };
 
+&gpio_prt11 {
+	status = "okay";
+};
+
+&gpio_prt12 {
+	status = "okay";
+};
+
 /* UART connected to KitProg3 */
 uart5: &scb5 {
 	compatible = "infineon,uart";
@@ -132,6 +141,28 @@ i2c0: &scb0 {
 	};
 };
 
+spi6: &scb6 {
+	compatible = "infineon,spi";
+	status = "okay";
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	pinctrl-0 = <&p12_0_scb6_spi_m_mosi &p12_1_scb6_spi_m_miso
+	&p12_2_scb6_spi_m_clk>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpio_prt12 3 GPIO_ACTIVE_LOW>;
+
+	bgt60tr13c: bgt60tr13c@0 {
+		compatible = "infineon,bgt60tr13c";
+		status = "okay";
+		reg = <0>;
+		spi-max-frequency = <25000000>;
+		irq-gpios = <&gpio_prt11 0 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&gpio_prt11 1 GPIO_ACTIVE_LOW>;
+	};
+};
+
 &p0_2_scb0_i2c_scl {
 	drive-open-drain;
 	input-enable;
@@ -156,6 +187,24 @@ i2c0: &scb0 {
 
 &p10_0_scb1_uart_rx {
 	input-enable;
+};
+
+&pinctrl {
+	/* SPI pins for SCB6 (RADAR sensor) */
+	p12_0_scb6_spi_m_mosi: p12_0_scb6_spi_m_mosi {
+		pinmux = <DT_CAT1_PINMUX(12, 0, HSIOM_SEL_ACT_8)>;
+		drive-push-pull;
+	};
+
+	p12_1_scb6_spi_m_miso: p12_1_scb6_spi_m_miso {
+		pinmux = <DT_CAT1_PINMUX(12, 1, HSIOM_SEL_ACT_8)>;
+		input-enable;
+	};
+
+	p12_2_scb6_spi_m_clk: p12_2_scb6_spi_m_clk {
+		pinmux = <DT_CAT1_PINMUX(12, 2, HSIOM_SEL_ACT_8)>;
+		drive-push-pull;
+	};
 };
 
 &watchdog0 {

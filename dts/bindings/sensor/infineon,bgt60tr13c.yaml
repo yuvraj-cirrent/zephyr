@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Infineon XENSIV BGT60TR13C 60 GHz radar sensor.
+
+  The BGT60TR13C is a 60 GHz FMCW radar MMIC with one transmitting and three
+  receiving antennas. It communicates over SPI and provides an interrupt signal
+  for data-ready notification and a reset signal for hardware reset.
+
+compatible: "infineon,bgt60tr13c"
+
+include: ["spi-device.yaml", "sensor-device.yaml"]
+
+properties:
+  irq-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to the sensor interrupt (data-ready) output pin.
+
+  reset-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      GPIO connected to the sensor active-low hardware reset input pin.

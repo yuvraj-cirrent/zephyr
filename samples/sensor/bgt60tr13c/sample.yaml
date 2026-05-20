@@ -1,0 +1,13 @@
+common:
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "BGT60TR13C sample started"
+  tags: sensor
+tests:
+  sample.sensor.bgt60tr13c:
+    platform_allow:
+      - cy8ckit_062s2_ai/cy8c624abzi_s2d44
+    integration_platforms:
+      - cy8ckit_062s2_ai/cy8c624abzi_s2d44
