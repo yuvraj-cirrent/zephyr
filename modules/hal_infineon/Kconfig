@@ -66,6 +66,11 @@ config USE_INFINEON_PDM_PCM
 	help
 	  Enable PDM-PCM HAL module driver for Infineon devices
 
+config USE_INFINEON_PDM_PCM_V1
+	bool
+	help
+	  Enable PDM-PCM V1 (MXAUDIOSS) HAL module driver for CAT1A devices
+
 config USE_INFINEON_RTC
 	bool
 	help

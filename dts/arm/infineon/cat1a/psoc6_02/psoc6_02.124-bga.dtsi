@@ -1267,6 +1267,24 @@
 			/omit-if-no-ref/ p13_7_tcpwm1_line_compl: p13_7_tcpwm1_line_compl {
 				pinmux = <DT_CAT1_PINMUX(13, 7, HSIOM_SEL_ACT_1)>;
 			};
+
+			/* audioss pdm_clk (HSIOM function 21 = HSIOM_SEL_ACT_9) */
+			/omit-if-no-ref/ p10_4_audioss0_pdm_clk: p10_4_audioss0_pdm_clk {
+				pinmux = <DT_CAT1_PINMUX(10, 4, HSIOM_SEL_ACT_9)>;
+			};
+
+			/omit-if-no-ref/ p12_4_audioss0_pdm_clk: p12_4_audioss0_pdm_clk {
+				pinmux = <DT_CAT1_PINMUX(12, 4, HSIOM_SEL_ACT_9)>;
+			};
+
+			/* audioss pdm_data (HSIOM function 21 = HSIOM_SEL_ACT_9) */
+			/omit-if-no-ref/ p10_5_audioss0_pdm_data: p10_5_audioss0_pdm_data {
+				pinmux = <DT_CAT1_PINMUX(10, 5, HSIOM_SEL_ACT_9)>;
+			};
+
+			/omit-if-no-ref/ p12_5_audioss0_pdm_data: p12_5_audioss0_pdm_data {
+				pinmux = <DT_CAT1_PINMUX(12, 5, HSIOM_SEL_ACT_9)>;
+			};
 		};
 	};
 };

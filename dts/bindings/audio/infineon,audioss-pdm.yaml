@@ -1,0 +1,61 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Infineon AUDIOSS PDM/PCM controller (V1, CY_IP_MXAUDIOSS) for CAT1A PSoC6
+  devices. Supports stereo PDM-to-PCM conversion with one shared PDM bus clock
+  and data line.  Left-channel data is clocked on the falling edge; right-channel
+  data is clocked on the rising edge, matching the IM72D128 SELECT pin wiring
+  (GND = left, VCC = right).
+
+compatible: "infineon,audioss-pdm"
+
+include: ["base.yaml", "pinctrl-device.yaml"]
+
+properties:
+  reg:
+    required: true
+
+  interrupts:
+    required: true
+
+  hf-clock-idx:
+    type: int
+    required: true
+    description: |
+      Index of the HF clock that feeds the AUDIOSS PDM block (0-based).
+      On PSoC6-02 this is 1 (clk_hf1).
+
+      Example:
+        hf-clock-idx = <1>;
+
+  clocks:
+    required: false
+    description: |
+      Optional phandle to the HF clock node.  This is used only to enable
+      the clock via the clock-control driver.  The actual clock rate is
+      queried at runtime via Cy_SysClk_ClkHfGetFrequency(hf-clock-idx).
+
+  pinctrl-0:
+    required: true
+
+  pinctrl-names:
+    required: true
+
+  dmas:
+    required: true
+    description: |
+      DMA specifier: phandle of the DW controller and the fixed channel
+      connected to the PDM RX 1-to-1 trigger.  On PSoC6-02 this must be
+      <&dma1 26> (TRIG_OUT_1TO1_4_PDM0_RX_TO_PDMA1_TR_IN26).
+
+      Example:
+        dmas = <&dma1 26>;
+
+  dma-names:
+    required: true
+    description: |
+      Must be "rx".
+
+      Example:
+        dma-names = "rx";

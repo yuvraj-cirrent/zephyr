@@ -84,6 +84,21 @@
 	clock-div = <1>;
 };
 
+/*
+ * HF1 clock = 8 MHz (IMO via path_mux1) used as AUDIOSS PDM clock source.
+ * With mclkDiv=1/2 => MCLKQ = 4 MHz.
+ * PDM_CKO to microphone pins = 4 MHz (within IM72D128 1-4 MHz range).
+ * sincDecRate is calculated at runtime from HF1 frequency and requested Fs.
+ */
+&path_mux1 {
+	status = "okay";
+};
+
+&clk_hf1 {
+	clock-div = <1>;
+	status = "okay";
+};
+
 &gpio_prt5 {
 	status = "okay";
 };
@@ -160,4 +175,36 @@ i2c0: &scb0 {
 
 &watchdog0 {
 	status = "okay";
+};
+
+/*
+ * DMA1 (DW1) channel 26 is dedicated to PDM0 RX via 1-to-1 trigger
+ * TRIG_OUT_1TO1_4_PDM0_RX_TO_PDMA1_TR_IN26.
+ */
+&dma1 {
+	status = "okay";
+};
+
+/*
+ * PDM microphones: Infineon IM72D128V01XTMA1 (XENSIV MEMS digital PDM).
+ * U4 (left):  SELECT=GND  => PDM data on falling edge of PDM_CLK.
+ * U5 (right): SELECT=VCC  => PDM data on rising edge of PDM_CLK.
+ * Both share the PDM bus on P10.4 (PDM_CLK) and P10.5 (PDM_DATA).
+ * Powered from VCC_3V3 rail; microphones placed ~27 mm apart.
+ */
+dmic_dev: &audioss0_pdm {
+	status = "okay";
+	pinctrl-0 = <&p10_4_audioss0_pdm_clk &p10_5_audioss0_pdm_data>;
+	pinctrl-names = "default";
+	hf-clock-idx = <1>;
+	dmas = <&dma1 26>;
+	dma-names = "rx";
+};
+
+&p10_4_audioss0_pdm_clk {
+	drive-push-pull;
+};
+
+&p10_5_audioss0_pdm_data {
+	input-enable;
 };

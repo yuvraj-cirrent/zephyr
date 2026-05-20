@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: Copyright The Zephyr Project Contributors
+# SPDX-License-Identifier: Apache-2.0
+
+# Infineon CAT1A AUDIOSS PDM/PCM DMIC driver (V1, CY_IP_MXAUDIOSS)
+
+config AUDIO_DMIC_CAT1A
+	bool "Infineon CAT1A AUDIOSS PDM DMIC driver"
+	default y
+	depends on DT_HAS_INFINEON_AUDIOSS_PDM_ENABLED
+	select USE_INFINEON_PDM_PCM_V1
+	select PINCTRL
+	select DMA
+	help
+	  Enable the Infineon CAT1A AUDIOSS PDM/PCM DMIC driver.
+	  This driver supports the CY_IP_MXAUDIOSS V1 PDM peripheral
+	  present on PSoC6-02 (CAT1A) devices.
