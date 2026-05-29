@@ -38,3 +38,27 @@ CONFIG_TRUSTED_EXECUTION_SECURE=y
 CONFIG_CODE_DATA_RELOCATION=y
 
 CONFIG_USE_DT_CODE_PARTITION=y
+
+# Heap required by Infineon btstack-integration RTOS abstraction layer.
+# cy_rtos_create_thread() allocates the BTU task stack (BTU_TASK_STACK_SIZE=0x2400)
+# and the task memory pool (CYBT_TASK_DEFAULT_POOL_SIZE=2048) from the heap.
+# Without this, k_aligned_alloc() returns NULL and the BT thread is created
+# with a NULL stack pointer, causing an immediate stack overflow fault.
+CONFIG_HEAP_MEM_POOL_SIZE=16384
+
+# BT RX thread stack - default 1200 is sufficient for basic peripheral/beacon,
+# increase if callbacks perform complex operations.
+CONFIG_BT_RX_STACK_SIZE=4096
+
+# Use ZMS instead of NVS as the settings backend.
+# The s25hs512t external flash has a 256KB erase-block-size, which exceeds
+# NVS's uint16_t sector_size limit (max 64KB), causing settings_subsys_init
+# to fail with -EDOM. ZMS uses uint32_t sector_size and handles 256KB blocks.
+CONFIG_ZMS=y
+
+# The s25hs512t external flash has write-block-size=256, which exceeds ZMS's
+# default 32-byte internal buffer (ZMS_BLOCK_SIZE). ZMS rejects flash with
+# write_block_size > ZMS_BLOCK_SIZE with "Unsupported write block size" (-EINVAL).
+# Set the ZMS buffer to match the flash write-block-size.
+CONFIG_ZMS_CUSTOMIZE_BLOCK_SIZE=y
+CONFIG_ZMS_CUSTOM_BLOCK_SIZE=256
