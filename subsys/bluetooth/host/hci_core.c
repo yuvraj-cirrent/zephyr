@@ -4283,12 +4283,17 @@ static int hci_init(void)
 	}
 #endif /* defined(CONFIG_BT_HCI_SET_PUBLIC_ADDR) */
 
+	printk("hci_init: calling bt_hci_setup\n");
 	err = bt_hci_setup(bt_dev.hci, &setup_params);
+	printk("hci_init: bt_hci_setup returned %d\n", err);
 	if (err && err != -ENOSYS) {
 		return err;
 	}
+#else
+	printk("hci_init: BT_HCI_SETUP disabled, going straight to common_init\n");
 #endif /* defined(CONFIG_BT_HCI_SETUP) */
 
+	printk("hci_init: calling common_init\n");
 	err = common_init();
 	if (err) {
 		return err;

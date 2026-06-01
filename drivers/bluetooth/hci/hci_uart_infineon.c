@@ -29,6 +29,10 @@ LOG_MODULE_REGISTER(infineon_bt_hci_uart);
 
 #include <stdint.h>
 
+#if defined(CONFIG_SOC_SERIES_PSE84)
+#include <cy_sysclk.h>
+#endif
+
 #define DT_DRV_COMPAT infineon_bt_hci_uart
 
 BUILD_ASSERT(DT_PROP(DT_INST_BUS(0), hw_flow_control) == 1,
@@ -264,40 +268,67 @@ int bt_h4_vnd_setup(const struct device *dev, const struct bt_hci_setup_params *
 	uint32_t hci_operation_speed = DT_INST_PROP_OR(0, hci_operation_speed, default_uart_speed);
 	uint32_t fw_download_speed = DT_INST_PROP_OR(0, fw_download_speed, default_uart_speed);
 
+	/*
+	 * Use k_msleep() for all delays.  On a correctly-clocked PSE84 each
+	 * tick is 0.1 ms.  If the CPU clock is misconfigured the delays will
+	 * be proportionally longer but the BT chip only needs "at least N ms"
+	 * so over-waiting is safe.
+	 */
+#define VND_MSDELAY(ms_)  k_msleep(ms_)
+
+	printk("vnd: bt_h4_vnd_setup ENTER\n");
+#if defined(CONFIG_SOC_SERIES_PSE84)
+	{
+		extern uint32_t SystemCoreClock;
+		printk("vnd: SystemCoreClock=%u\n", SystemCoreClock);
+		printk("vnd: HF0_freq=%u DPLL0_en=%d\n",
+		       Cy_SysClk_ClkHfGetFrequency(0U),
+		       (int)Cy_SysClk_DpllLpIsEnabled(0U));
+	}
+#endif
+
 	/* Check BT Uart instance */
 	if (!device_is_ready(dev)) {
+		printk("vnd: device not ready!\n");
 		return -EINVAL;
 	}
+	printk("vnd: device ready, starting power seq\n");
 
 #if DT_INST_NODE_HAS_PROP(0, bt_reg_on_gpios)
 	struct gpio_dt_spec bt_reg_on = GPIO_DT_SPEC_GET(DT_DRV_INST(0), bt_reg_on_gpios);
 
+	printk("vnd: gpio port=%s pin=%d\n", bt_reg_on.port->name, bt_reg_on.pin);
+
 	/* Check BT REG_ON gpio instance */
 	if (!gpio_is_ready_dt(&bt_reg_on)) {
-		LOG_ERR("Error: failed to configure bt_reg_on %s pin %d",
-			bt_reg_on.port->name, bt_reg_on.pin);
+		printk("vnd: ERROR gpio not ready!\n");
 		return -EIO;
 	}
+	printk("vnd: gpio ready, configuring output LOW\n");
 
 	/* Configure bt_reg_on as output  */
 	err = gpio_pin_configure_dt(&bt_reg_on, GPIO_OUTPUT_LOW);
 	if (err) {
-		LOG_ERR("Error %d: failed to configure bt_reg_on %s pin %d",
-			err, bt_reg_on.port->name, bt_reg_on.pin);
+		printk("vnd: ERROR gpio_pin_configure err=%d\n", err);
 		return err;
 	}
+	printk("vnd: gpio LOW ok, sleeping 300ms (CBUCK discharge)\n");
 
 	/* Allow BT CBUCK regulator to discharge */
-	(void)k_msleep(BT_POWER_CBUCK_DISCHARGE_TIME_MS);
+	VND_MSDELAY(BT_POWER_CBUCK_DISCHARGE_TIME_MS);
+	printk("vnd: CBUCK done, setting gpio HIGH\n");
 
 	err = gpio_pin_set_dt(&bt_reg_on, 1);
 	if (err) {
+		printk("vnd: ERROR gpio_pin_set err=%d\n", err);
 		return err;
 	}
+	printk("vnd: gpio HIGH ok, sleeping 500ms (settling)\n");
 #endif /* DT_INST_NODE_HAS_PROP(0, bt_reg_on_gpios) */
 
 	/* BT settling time after power on */
-	(void)k_msleep(BT_POWER_ON_SETTLING_TIME_MS);
+	VND_MSDELAY(BT_POWER_ON_SETTLING_TIME_MS);
+	printk("vnd: settling done, proceeding to HCI_RESET\n");
 
 	/* Newer controllers like CYW555xx require Download mode for firmware upload.
 	 * In Download mode, the baudrate cannot be changed without the Minidriver.
@@ -312,7 +343,9 @@ int bt_h4_vnd_setup(const struct device *dev, const struct bt_hci_setup_params *
 	}
 
 	/* Send HCI_RESET */
+	printk("vnd: sending first HCI_RESET\n");
 	err = bt_hci_cmd_send_sync(BT_HCI_OP_RESET, NULL, NULL);
+	printk("vnd: first HCI_RESET err=%d\n", err);
 	if (err) {
 		return err;
 	}
@@ -333,7 +366,7 @@ int bt_h4_vnd_setup(const struct device *dev, const struct bt_hci_setup_params *
 	}
 
 	/* Stabilization delay */
-	(void)k_msleep(BT_STABILIZATION_DELAY_MS);
+	VND_MSDELAY(BT_STABILIZATION_DELAY_MS);
 
 	/* When FW launched, HCI UART baudrate should be configured to default */
 	if (fw_download_speed != default_uart_speed) {
@@ -344,7 +377,9 @@ int bt_h4_vnd_setup(const struct device *dev, const struct bt_hci_setup_params *
 	}
 
 	/* Send HCI_RESET */
+	printk("vnd: sending second HCI_RESET\n");
 	err = bt_hci_cmd_send_sync(BT_HCI_OP_RESET, NULL, NULL);
+	printk("vnd: second HCI_RESET err=%d\n", err);
 	if (err) {
 		return err;
 	}

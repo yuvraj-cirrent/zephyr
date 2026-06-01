@@ -265,12 +265,14 @@ static void rx_thread(void *p1, void *p2, void *p3)
 		uart_irq_rx_enable(cfg->uart);
 
 		k_sem_take(&h4->rx.ready, K_FOREVER);
+		printk("h4: rx_thread woke\n");
 
 		buf = k_fifo_get(&h4->rx.fifo, K_NO_WAIT);
 		while (buf != NULL) {
 			uart_irq_rx_enable(cfg->uart);
 
 			LOG_DBG("Calling bt_recv(%p)", buf);
+			printk("h4: calling recv len=%u\n", buf->len);
 			h4->recv(dev, buf);
 
 			/* Give other threads a chance to run if the ISR
@@ -372,6 +374,7 @@ static inline void read_payload(const struct device *dev)
 	reset_rx(h4);
 
 	LOG_DBG("Putting buf %p to rx fifo", buf);
+	printk("h4: pkt %u B -> fifo\n", buf->len);
 	k_fifo_put(&h4->rx.fifo, buf);
 	k_sem_give(&h4->rx.ready);
 }
@@ -566,6 +569,7 @@ static int h4_close(const struct device *dev)
 	struct h4_data *h4 = dev->data;
 	int err;
 
+	printk("h4: h4_close called!\n");
 	LOG_DBG("");
 
 	uart_irq_rx_disable(cfg->uart);
